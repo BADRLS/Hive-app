@@ -96,10 +96,32 @@ export function LoginPage({ onLogin }: LoginPageProps) {
             <p className="text-gray-600 mt-2">Enter your email to receive a password reset link</p>
           </div>
 
-          <form onSubmit={(e) => {
+          {/* Error Message Display */}
+          {error && <div className="bg-red-100 text-red-600 p-3 rounded-lg mb-4 text-sm text-center">{error}</div>}
+
+          <form onSubmit={async (e) => {
             e.preventDefault();
-            alert('Password reset link sent to ' + email);
-            setShowForgotPassword(false);
+            setError('');
+            setLoading(true);
+
+            try {
+              const res = await fetch('/api/auth/forgot-password', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email }),
+              });
+
+              const data = await res.json();
+
+              if (!res.ok) throw new Error(data.error || 'Failed to send reset email');
+
+              alert('Password reset link sent to ' + email + '. Please check your email.');
+              setShowForgotPassword(false);
+            } catch (err: any) {
+              setError(err.message);
+            } finally {
+              setLoading(false);
+            }
           }}>
             <div className="mb-6">
               <label className="block text-gray-700 mb-2">Email</label>
@@ -116,8 +138,12 @@ export function LoginPage({ onLogin }: LoginPageProps) {
               </div>
             </div>
 
-            <button type="submit" className="w-full bg-amber-600 text-white py-3 rounded-lg hover:bg-amber-700 transition-colors mb-4">
-              Send Reset Link
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-amber-600 text-white py-3 rounded-lg hover:bg-amber-700 transition-colors mb-4 disabled:opacity-50"
+            >
+              {loading ? 'Sending...' : 'Send Reset Link'}
             </button>
 
             <button type="button" onClick={() => setShowForgotPassword(false)} className="w-full text-amber-600 hover:text-amber-700">
