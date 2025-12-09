@@ -1,36 +1,91 @@
 import { useState } from 'react';
-import { Lock, Mail } from 'lucide-react';
+import { Lock, Mail, User } from 'lucide-react';
 
 interface LoginPageProps {
   onLogin: () => void;
 }
 
 export function LoginPage({ onLogin }: LoginPageProps) {
-  const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [showSignUp, setShowSignUp] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+
+  // Form State
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [fullName, setFullName] = useState(''); // New: For signup
   const [confirmPassword, setConfirmPassword] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // UI State
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  // --- 1. HANDLE LOGIN ---
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    onLogin();
+    setError('');
+    setLoading(true);
+
+    try {
+      // Call the REAL backend route we just created
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.error || 'Login failed');
+
+      // Save the token securely
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('userName', data.user.name);
+      localStorage.setItem('userId', data.user.id);
+
+      onLogin(); // Switch app view to Dashboard
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleSignUp = (e: React.FormEvent) => {
+  // --- 2. HANDLE SIGN UP ---
+  const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
+
     if (password !== confirmPassword) {
-      alert('Passwords do not match');
+      setError('Passwords do not match');
       return;
     }
-    onLogin();
+
+    setLoading(true);
+    try {
+      const res = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password, name: fullName }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.error || 'Signup failed');
+
+      alert('Account created successfully! Please log in.');
+      setShowSignUp(false); // Switch back to login screen
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSSOLogin = () => {
-    onLogin();
+    alert("SSO Login requires additional university configuration.");
   };
 
-  // Forgot Password Screen
+  // --- 3. FORGOT PASSWORD SCREEN (unchanged) ---
   if (showForgotPassword) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-amber-400 via-orange-500 to-amber-600 flex items-center justify-center p-4">
@@ -61,18 +116,11 @@ export function LoginPage({ onLogin }: LoginPageProps) {
               </div>
             </div>
 
-            <button
-              type="submit"
-              className="w-full bg-amber-600 text-white py-3 rounded-lg hover:bg-amber-700 transition-colors mb-4"
-            >
+            <button type="submit" className="w-full bg-amber-600 text-white py-3 rounded-lg hover:bg-amber-700 transition-colors mb-4">
               Send Reset Link
             </button>
 
-            <button
-              type="button"
-              onClick={() => setShowForgotPassword(false)}
-              className="w-full text-amber-600 hover:text-amber-700"
-            >
+            <button type="button" onClick={() => setShowForgotPassword(false)} className="w-full text-amber-600 hover:text-amber-700">
               Back to Login
             </button>
           </form>
@@ -81,7 +129,7 @@ export function LoginPage({ onLogin }: LoginPageProps) {
     );
   }
 
-  // Sign Up Screen
+  // --- 4. SIGN UP SCREEN ---
   if (showSignUp) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-amber-400 via-orange-500 to-amber-600 flex items-center justify-center p-4">
@@ -96,7 +144,26 @@ export function LoginPage({ onLogin }: LoginPageProps) {
             <p className="text-gray-600">Create your account</p>
           </div>
 
+          {/* Error Message Display */}
+          {error && <div className="bg-red-100 text-red-600 p-3 rounded-lg mb-4 text-sm text-center">{error}</div>}
+
           <form onSubmit={handleSignUp} className="mb-6">
+            {/* New Full Name Field */}
+            <div className="mb-4">
+              <label className="block text-gray-700 mb-2">Full Name</label>
+              <div className="relative">
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                <input
+                  type="text"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  placeholder="John Doe"
+                  required
+                />
+              </div>
+            </div>
+
             <div className="mb-4">
               <label className="block text-gray-700 mb-2">Email Address</label>
               <div className="relative">
@@ -144,27 +211,12 @@ export function LoginPage({ onLogin }: LoginPageProps) {
 
             <button
               type="submit"
-              className="w-full bg-amber-600 text-white py-3 rounded-lg hover:bg-amber-700 transition-colors"
+              disabled={loading}
+              className="w-full bg-amber-600 text-white py-3 rounded-lg hover:bg-amber-700 transition-colors disabled:opacity-50"
             >
-              Sign Up
+              {loading ? 'Creating Account...' : 'Sign Up'}
             </button>
           </form>
-
-          <div className="relative mb-6">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-300"></div>
-            </div>
-            <div className="relative flex justify-center">
-              <span className="bg-white px-4 text-gray-500">Or</span>
-            </div>
-          </div>
-
-          <button
-            onClick={handleSSOLogin}
-            className="w-full border-2 border-amber-600 text-amber-600 py-3 rounded-lg hover:bg-amber-50 transition-colors mb-4"
-          >
-            Sign Up with SSO
-          </button>
 
           <div className="text-center">
             <span className="text-gray-600">Already have an account? </span>
@@ -181,7 +233,7 @@ export function LoginPage({ onLogin }: LoginPageProps) {
     );
   }
 
-  // Login Screen (Default)
+  // --- 5. LOGIN SCREEN (Default) ---
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-400 via-orange-500 to-amber-600 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
@@ -195,7 +247,10 @@ export function LoginPage({ onLogin }: LoginPageProps) {
           <p className="text-gray-600">Your Academic Hub</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="mb-6">
+        {/* Error Message Display */}
+        {error && <div className="bg-red-100 text-red-600 p-3 rounded-lg mb-4 text-sm text-center">{error}</div>}
+
+        <form onSubmit={handleLogin} className="mb-6">
           <div className="mb-4">
             <label className="block text-gray-700 mb-2">Email Address</label>
             <div className="relative">
@@ -238,27 +293,12 @@ export function LoginPage({ onLogin }: LoginPageProps) {
 
           <button
             type="submit"
-            className="w-full bg-amber-600 text-white py-3 rounded-lg hover:bg-amber-700 transition-colors mb-4"
+            disabled={loading}
+            className="w-full bg-amber-600 text-white py-3 rounded-lg hover:bg-amber-700 transition-colors mb-4 disabled:opacity-50"
           >
-            Log In
+            {loading ? 'Logging in...' : 'Log In'}
           </button>
 
-          <div className="relative mb-4">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-300"></div>
-            </div>
-            <div className="relative flex justify-center">
-              <span className="bg-white px-4 text-gray-500">Or</span>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            onClick={handleSSOLogin}
-            className="w-full border-2 border-amber-600 text-amber-600 py-3 rounded-lg hover:bg-amber-50 transition-colors"
-          >
-            Sign In with SSO
-          </button>
         </form>
 
         <div className="text-center">

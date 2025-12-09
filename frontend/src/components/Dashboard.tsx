@@ -1,112 +1,77 @@
-import { useState } from 'react';
-import { Search, Filter, AlertCircle, Calendar, FileText, Megaphone } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Search, Filter, AlertCircle, Calendar, FileText } from 'lucide-react';
 import { TaskCard } from './TaskCard';
 
 interface DashboardProps {
   onSelectAssignment: (assignment: any) => void;
 }
 
-// Mock data
-const mockTasks = [
-  {
-    id: 1,
-    title: 'Machine Learning Assignment 3',
-    course: 'CS 4780',
-    type: 'assignment',
-    priority: 'high',
-    dueDate: '2025-12-02T23:59:00',
-    description: 'Implement and train a neural network for image classification',
-    hasFiles: true,
-    status: 'pending'
-  },
-  {
-    id: 2,
-    title: 'Organic Chemistry Lab Report',
-    course: 'CHEM 2510',
-    type: 'assignment',
-    priority: 'high',
-    dueDate: '2025-12-03T17:00:00',
-    description: 'Complete lab report on synthesis experiment',
-    hasFiles: false,
-    status: 'pending'
-  },
-  {
-    id: 3,
-    title: 'Office Hours - Prof. Johnson',
-    course: 'CS 4780',
-    type: 'event',
-    priority: 'medium',
-    dueDate: '2025-12-01T14:00:00',
-    description: 'Discuss assignment questions',
-    hasFiles: false,
-    status: 'upcoming'
-  },
-  {
-    id: 4,
-    title: 'Reading Quiz Chapter 7',
-    course: 'ECON 3010',
-    type: 'assignment',
-    priority: 'medium',
-    dueDate: '2025-12-04T11:59:00',
-    description: 'Quiz on macroeconomic principles',
-    hasFiles: false,
-    status: 'pending'
-  },
-  {
-    id: 5,
-    title: 'Final Project Proposal Due',
-    course: 'INFO 3450',
-    type: 'assignment',
-    priority: 'high',
-    dueDate: '2025-12-05T23:59:00',
-    description: 'Submit final project proposal with team members',
-    hasFiles: true,
-    status: 'pending'
-  },
-  {
-    id: 6,
-    title: 'New Course Announcement',
-    course: 'CS 4780',
-    type: 'announcement',
-    priority: 'low',
-    dueDate: '2025-11-30T09:00:00',
-    description: 'Extension granted for Assignment 2',
-    hasFiles: false,
-    status: 'read'
-  },
-  {
-    id: 7,
-    title: 'Study Group Meeting',
-    course: 'CHEM 2510',
-    type: 'event',
-    priority: 'low',
-    dueDate: '2025-12-02T19:00:00',
-    description: 'Group study session at library',
-    hasFiles: false,
-    status: 'upcoming'
-  },
-  {
-    id: 8,
-    title: 'Midterm Exam',
-    course: 'ECON 3010',
-    type: 'event',
-    priority: 'high',
-    dueDate: '2025-12-06T10:00:00',
-    description: 'Comprehensive midterm covering chapters 1-8',
-    hasFiles: false,
-    status: 'upcoming'
-  }
-];
-
 export function Dashboard({ onSelectAssignment }: DashboardProps) {
+  // 1. Change mockTasks to state
+  const [tasks, setTasks] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<string>('all');
   const [filterPriority, setFilterPriority] = useState<string>('all');
   const [showFilters, setShowFilters] = useState(false);
 
-  const filteredTasks = mockTasks.filter(task => {
-    const matchesSearch = task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          task.course.toLowerCase().includes(searchQuery.toLowerCase());
+  // 2. Fetch data from Backend
+  useEffect(() => {
+    const fetchFeed = async () => {
+      try {
+        const token = localStorage.getItem('token'); // <--- Retrieve token stored during Login
+
+        if (!token) {
+          console.error("No token found, user might not be logged in.");
+          setLoading(false);
+          return;
+        }
+
+        const response = await fetch('/api/integration/feed', {
+          headers: {
+            'Authorization': `Bearer ${token}` // <--- CRITICAL: Send token to backend
+          }
+        });
+
+        if (response.status === 401 || response.status === 403) {
+          // Token expired or invalid
+          console.error("Session expired or invalid token");
+          // Ideally, redirect to login here (e.g., window.location.reload())
+          return;
+        }
+
+        const data = await response.json();
+
+        if (data.success) {
+          // Normalize backend data to frontend format
+          const formattedTasks = data.data.map((item: any) => ({
+            id: item.id,
+            title: item.title,
+            course: item.course,
+            course_id: item.course_id,  // Add course_id for assignment submission
+            type: item.type,
+            priority: item.priority.toLowerCase(), // Backend sends "High", frontend expects "high"
+            dueDate: item.due_date || item.start_time,
+            description: item.description,
+            hasFiles: false,
+            status: item.status
+          }));
+          setTasks(formattedTasks);
+        }
+      } catch (error) {
+        console.error("Failed to fetch feed:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchFeed();
+  }, []);
+
+  // Filter logic 
+  const filteredTasks = tasks.filter(task => {
+    const matchesSearch = (task.title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (task.course || '').toLowerCase().includes(searchQuery.toLowerCase());
     const matchesType = filterType === 'all' || task.type === filterType;
     const matchesPriority = filterPriority === 'all' || task.priority === filterPriority;
     return matchesSearch && matchesType && matchesPriority;
@@ -116,11 +81,13 @@ export function Dashboard({ onSelectAssignment }: DashboardProps) {
   const mediumPriorityTasks = filteredTasks.filter(t => t.priority === 'medium');
   const lowPriorityTasks = filteredTasks.filter(t => t.priority === 'low');
 
+  if (loading) return <div className="p-10 text-center">Loading your Hive...</div>;
+
   return (
     <div className="space-y-6">
       {/* Welcome Section */}
       <div className="bg-gradient-to-r from-amber-500 to-orange-500 rounded-2xl p-6 text-white">
-        <h2 className="mb-2">Welcome back, Alex! 👋</h2>
+        <h2 className="mb-2">Welcome back! 👋</h2>
         <p>You have {highPriorityTasks.length} high priority items and {filteredTasks.filter(t => t.type === 'event').length} upcoming events</p>
       </div>
 
@@ -187,9 +154,9 @@ export function Dashboard({ onSelectAssignment }: DashboardProps) {
           </div>
           <div className="space-y-3">
             {highPriorityTasks.map(task => (
-              <TaskCard 
-                key={task.id} 
-                task={task} 
+              <TaskCard
+                key={task.id}
+                task={task}
                 onClick={() => onSelectAssignment(task)}
               />
             ))}
@@ -206,11 +173,7 @@ export function Dashboard({ onSelectAssignment }: DashboardProps) {
           </div>
           <div className="space-y-3">
             {mediumPriorityTasks.map(task => (
-              <TaskCard 
-                key={task.id} 
-                task={task} 
-                onClick={() => onSelectAssignment(task)}
-              />
+              <TaskCard key={task.id} task={task} onClick={() => onSelectAssignment(task)} />
             ))}
           </div>
         </div>
@@ -225,11 +188,7 @@ export function Dashboard({ onSelectAssignment }: DashboardProps) {
           </div>
           <div className="space-y-3">
             {lowPriorityTasks.map(task => (
-              <TaskCard 
-                key={task.id} 
-                task={task} 
-                onClick={() => onSelectAssignment(task)}
-              />
+              <TaskCard key={task.id} task={task} onClick={() => onSelectAssignment(task)} />
             ))}
           </div>
         </div>

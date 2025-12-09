@@ -7,8 +7,9 @@ import { Notifications } from './components/Notifications';
 import { Profile } from './components/Profile';
 import { Settings } from './components/Settings';
 import { AssignmentDetail } from './components/AssignmentDetail';
+import { TokenGuide } from './components/TokenGuide';
 
-type ViewType = 'dashboard' | 'notifications' | 'profile' | 'settings' | 'assignment';
+type ViewType = 'dashboard' | 'notifications' | 'profile' | 'settings' | 'assignment' | 'token-guide';
 
 interface Assignment {
   id: string;
@@ -30,7 +31,13 @@ export default function App() {
   }
 
   if (showAccountLinking) {
-    return <AccountLinking onContinue={() => setShowAccountLinking(false)} />;
+    return <AccountLinking
+      onContinue={() => setShowAccountLinking(false)}
+      onHelpClick={() => {
+        setShowAccountLinking(false);
+        setCurrentView('token-guide');
+      }}
+    />;
   }
 
   const renderView = () => {
@@ -48,11 +55,13 @@ export default function App() {
         return <Settings />;
       case 'assignment':
         return selectedAssignment ? (
-          <AssignmentDetail 
-            assignment={selectedAssignment} 
+          <AssignmentDetail
+            assignment={selectedAssignment}
             onBack={() => setCurrentView('dashboard')}
           />
         ) : null;
+      case 'token-guide':
+        return <TokenGuide onBack={() => setCurrentView('dashboard')} />;
       default:
         return <Dashboard onSelectAssignment={(assignment: Assignment) => {
           setSelectedAssignment(assignment);
@@ -63,7 +72,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header 
+      <Header
         currentView={currentView}
         onNavigate={setCurrentView}
         onLogout={() => setIsAuthenticated(false)}

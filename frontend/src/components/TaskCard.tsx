@@ -38,6 +38,20 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
     const diffHours = Math.floor((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60));
     const diffDays = Math.floor(diffHours / 24);
 
+    // For events, don't show "Overdue" - show "Started" or time until
+    if (task.type === 'event') {
+      if (diffHours < 0) {
+        return 'Past';
+      } else if (diffHours < 24) {
+        return `Starts in ${diffHours}h`;
+      } else if (diffDays < 7) {
+        return `In ${diffDays}d`;
+      } else {
+        return dueDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      }
+    }
+
+    // For assignments, show overdue
     if (diffHours < 0) {
       return 'Overdue';
     } else if (diffHours < 24) {
@@ -78,9 +92,9 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
             </div>
             <h4 className="text-gray-900">{task.title}</h4>
           </div>
-          
+
           <p className="text-gray-600 mb-3">{task.description}</p>
-          
+
           <div className="flex flex-wrap items-center gap-3">
             <span className="px-3 py-1 bg-amber-50 text-amber-700 rounded-full">
               {task.course}

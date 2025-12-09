@@ -21,22 +21,81 @@ export function AssignmentDetail({ assignment, onBack }: AssignmentDetailProps) 
     setSelectedFiles(selectedFiles.filter((_, i) => i !== index));
   };
 
-  const handleSubmit = () => {
-    alert('Assignment submitted successfully!');
-    setShowSubmitSection(false);
-    setSubmissionText('');
-    setSelectedFiles([]);
+  const handleSubmit = async () => {
+    try {
+      if (!submissionText && selectedFiles.length === 0) {
+        return alert("Please enter text or select a file to submit");
+      }
+
+      const token = localStorage.getItem('token');
+      const courseId = assignment.course_id;
+      if (!courseId) {
+        alert("Error: Course ID missing from assignment data. Cannot submit.");
+        return;
+      }
+
+      // Append file names to text to ensure non-empty body and ack files
+      let finalBody = submissionText;
+      if (selectedFiles.length > 0) {
+        finalBody += `\n\n[Attached Files: ${selectedFiles.map(f => f.name).join(', ')}]`;
+      }
+
+      // Fallback if still empty (shouldn't happen with validation)
+      if (!finalBody.trim()) finalBody = "[Empty Submission]";
+
+      const res = await fetch(`/api/assignments/submit/${assignment.id}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          course_id: courseId,
+          submission_text: finalBody,
+          // file_url: ... (later)
+        })
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        alert('Assignment submitted successfully to Canvas! 🚀');
+        setShowSubmitSection(false);
+        setSubmissionText('');
+        setSelectedFiles([]);
+      } else {
+        alert('Submission Failed: ' + data.error);
+      }
+
+    } catch (err) {
+      console.error(err);
+      alert('Error submitting assignment');
+    }
   };
 
   const formatDueDate = (date: string) => {
-    return new Date(date).toLocaleDateString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    if (!date) return 'No date specified';
+
+    try {
+      const parsedDate = new Date(date);
+
+      // Check if date is valid
+      if (isNaN(parsedDate.getTime())) {
+        return 'Invalid date';
+      }
+
+      return parsedDate.toLocaleDateString('en-US', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (error) {
+      console.error('Date parsing error:', date, error);
+      return 'Invalid date';
+    }
   };
 
   const getPriorityBadge = () => {
@@ -84,8 +143,8 @@ export function AssignmentDetail({ assignment, onBack }: AssignmentDetailProps) 
           <h3 className="text-gray-900 mb-3">Description</h3>
           <p className="text-gray-700 mb-4">{assignment.description}</p>
           <p className="text-gray-700">
-            This assignment requires you to demonstrate your understanding of the core concepts covered in recent lectures. 
-            Please ensure your submission is well-organized and includes all required components. You may work individually 
+            This assignment requires you to demonstrate your understanding of the core concepts covered in recent lectures.
+            Please ensure your submission is well-organized and includes all required components. You may work individually
             or in groups of up to 3 students. All group members must be listed on the submission.
           </p>
         </div>

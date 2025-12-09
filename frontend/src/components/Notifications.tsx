@@ -1,88 +1,91 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Bell, Check, Trash2, Settings, Filter } from 'lucide-react';
 
 interface Notification {
-  id: number;
+  notification_id: string; // Updated to match DB
   title: string;
-  message: string;
-  course: string;
-  time: string;
-  read: boolean;
+  content: string; // DB column is content, not message
+  course?: string; // might be null in DB
+  created_at: string;
+  is_read: boolean;
   type: 'assignment' | 'event' | 'announcement' | 'grade';
 }
 
-const mockNotifications: Notification[] = [
-  {
-    id: 1,
-    title: 'New Assignment Posted',
-    message: 'Machine Learning Assignment 3 has been posted and is due December 2nd',
-    course: 'CS 4780',
-    time: '2 hours ago',
-    read: false,
-    type: 'assignment'
-  },
-  {
-    id: 2,
-    title: 'Grade Posted',
-    message: 'Your grade for Lab Report 2 has been posted: A-',
-    course: 'CHEM 2510',
-    time: '5 hours ago',
-    read: false,
-    type: 'grade'
-  },
-  {
-    id: 3,
-    title: 'Upcoming Event',
-    message: 'Office hours with Prof. Johnson tomorrow at 2:00 PM',
-    course: 'CS 4780',
-    time: '1 day ago',
-    read: false,
-    type: 'event'
-  },
-  {
-    id: 4,
-    title: 'Assignment Reminder',
-    message: 'Reading Quiz Chapter 7 is due in 3 days',
-    course: 'ECON 3010',
-    time: '1 day ago',
-    read: true,
-    type: 'assignment'
-  },
-  {
-    id: 5,
-    title: 'Course Announcement',
-    message: 'Extension granted for Assignment 2 until December 5th',
-    course: 'CS 4780',
-    time: '2 days ago',
-    read: true,
-    type: 'announcement'
-  }
-];
-
 export function Notifications() {
-  const [notifications, setNotifications] = useState<Notification[]>(mockNotifications);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
   const [showSettings, setShowSettings] = useState(false);
 
-  const filteredNotifications = filter === 'all' 
-    ? notifications 
-    : notifications.filter(n => !n.read);
+  // Fetch Notifications
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const res = await fetch('/api/notifications', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          setNotifications(data);
+        }
+      } catch (err) {
+        console.error("Failed to fetch notifications", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchNotifications();
+  }, []);
 
-  const markAsRead = (id: number) => {
-    setNotifications(notifications.map(n => 
-      n.id === id ? { ...n, read: true } : n
+  const filteredNotifications = filter === 'all'
+    ? notifications
+    : notifications.filter(n => !n.is_read);
+
+  const markAsRead = async (id: string) => {
+    // Optimistic Update
+    setNotifications(notifications.map(n =>
+      n.notification_id === id ? { ...n, is_read: true } : n
     ));
+    // API Call
+    try {
+      const token = localStorage.getItem('token');
+      await fetch(`/api/notifications/${id}/read`, {
+        method: 'PUT',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+    } catch (err) {
+      console.error(err);
+    }
   };
 
-  const markAllAsRead = () => {
-    setNotifications(notifications.map(n => ({ ...n, read: true })));
+  const markAllAsRead = async () => {
+    setNotifications(notifications.map(n => ({ ...n, is_read: true })));
+    try {
+      const token = localStorage.getItem('token');
+      await fetch(`/api/notifications/read-all`, {
+        method: 'PUT',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+    } catch (err) {
+      console.error(err);
+    }
   };
 
-  const deleteNotification = (id: number) => {
-    setNotifications(notifications.filter(n => n.id !== id));
+  const deleteNotification = async (id: string) => {
+    setNotifications(notifications.filter(n => n.notification_id !== id));
+    try {
+      const token = localStorage.getItem('token');
+      await fetch(`/api/notifications/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+    } catch (err) {
+      console.error(err);
+    }
   };
 
-  const unreadCount = notifications.filter(n => !n.read).length;
+  const unreadCount = notifications.filter(n => !n.is_read).length;
 
   const getTypeColor = (type: string) => {
     switch (type) {
@@ -98,6 +101,8 @@ export function Notifications() {
         return 'bg-gray-100 text-gray-700';
     }
   };
+
+  if (loading) return <div className="p-8 text-center text-gray-500">Loading notifications...</div>;
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -145,14 +150,6 @@ export function Notifications() {
                 <input type="checkbox" defaultChecked className="w-4 h-4 text-amber-600" />
                 <span className="text-gray-700">Push notifications for upcoming deadlines</span>
               </label>
-              <label className="flex items-center gap-3">
-                <input type="checkbox" defaultChecked className="w-4 h-4 text-amber-600" />
-                <span className="text-gray-700">Notifications for grade postings</span>
-              </label>
-              <label className="flex items-center gap-3">
-                <input type="checkbox" className="w-4 h-4 text-amber-600" />
-                <span className="text-gray-700">Daily summary emails</span>
-              </label>
             </div>
           </div>
         )}
@@ -166,12 +163,11 @@ export function Notifications() {
           ) : (
             filteredNotifications.map(notification => (
               <div
-                key={notification.id}
-                className={`p-4 rounded-lg border ${
-                  notification.read 
-                    ? 'bg-white border-gray-200' 
+                key={notification.notification_id}
+                className={`p-4 rounded-lg border ${notification.is_read
+                    ? 'bg-white border-gray-200'
                     : 'bg-amber-50 border-amber-200'
-                }`}
+                  }`}
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1">
@@ -180,21 +176,21 @@ export function Notifications() {
                       <span className={`px-2 py-1 rounded text-xs ${getTypeColor(notification.type)}`}>
                         {notification.type}
                       </span>
-                      {!notification.read && (
+                      {!notification.is_read && (
                         <span className="w-2 h-2 bg-amber-600 rounded-full"></span>
                       )}
                     </div>
-                    <p className="text-gray-600 mb-2">{notification.message}</p>
+                    <p className="text-gray-600 mb-2">{notification.content}</p>
                     <div className="flex items-center gap-4 text-gray-500">
-                      <span>{notification.course}</span>
+                      <span>{notification.course || 'System'}</span>
                       <span>•</span>
-                      <span>{notification.time}</span>
+                      <span>{new Date(notification.created_at).toLocaleDateString()}</span>
                     </div>
                   </div>
                   <div className="flex gap-2">
-                    {!notification.read && (
+                    {!notification.is_read && (
                       <button
-                        onClick={() => markAsRead(notification.id)}
+                        onClick={() => markAsRead(notification.notification_id)}
                         className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
                         title="Mark as read"
                       >
@@ -202,7 +198,7 @@ export function Notifications() {
                       </button>
                     )}
                     <button
-                      onClick={() => deleteNotification(notification.id)}
+                      onClick={() => deleteNotification(notification.notification_id)}
                       className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
                       title="Delete"
                     >
