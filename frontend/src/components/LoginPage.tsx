@@ -124,10 +124,11 @@ export function LoginPage({ onLogin }: LoginPageProps) {
             }
           }}>
             <div className="mb-6">
-              <label className="block text-gray-700 mb-2">Email</label>
+              <label htmlFor="forgot-email" className="block text-gray-700 mb-2">Email</label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
                 <input
+                  id="forgot-email"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -176,10 +177,11 @@ export function LoginPage({ onLogin }: LoginPageProps) {
           <form onSubmit={handleSignUp} className="mb-6">
             {/* New Full Name Field */}
             <div className="mb-4">
-              <label className="block text-gray-700 mb-2">Full Name</label>
+              <label htmlFor="signup-fullname" className="block text-gray-700 mb-2">Full Name</label>
               <div className="relative">
                 <User className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
                 <input
+                  id="signup-fullname"
                   type="text"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
@@ -191,10 +193,11 @@ export function LoginPage({ onLogin }: LoginPageProps) {
             </div>
 
             <div className="mb-4">
-              <label className="block text-gray-700 mb-2">Email Address</label>
+              <label htmlFor="signup-email" className="block text-gray-700 mb-2">Email Address</label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
                 <input
+                  id="signup-email"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -206,10 +209,11 @@ export function LoginPage({ onLogin }: LoginPageProps) {
             </div>
 
             <div className="mb-4">
-              <label className="block text-gray-700 mb-2">Password</label>
+              <label htmlFor="signup-password" className="block text-gray-700 mb-2">Password</label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
                 <input
+                  id="signup-password"
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -221,10 +225,11 @@ export function LoginPage({ onLogin }: LoginPageProps) {
             </div>
 
             <div className="mb-6">
-              <label className="block text-gray-700 mb-2">Confirm Password</label>
+              <label htmlFor="signup-confirm-password" className="block text-gray-700 mb-2">Confirm Password</label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
                 <input
+                  id="signup-confirm-password"
                   type="password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
@@ -278,10 +283,11 @@ export function LoginPage({ onLogin }: LoginPageProps) {
 
         <form onSubmit={handleLogin} className="mb-6">
           <div className="mb-4">
-            <label className="block text-gray-700 mb-2">Email Address</label>
+            <label htmlFor="login-email" className="block text-gray-700 mb-2">Email Address</label>
             <div className="relative">
               <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
               <input
+                id="login-email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -293,10 +299,11 @@ export function LoginPage({ onLogin }: LoginPageProps) {
           </div>
 
           <div className="mb-4">
-            <label className="block text-gray-700 mb-2">Password</label>
+            <label htmlFor="login-password" className="block text-gray-700 mb-2">Password</label>
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
               <input
+                id="login-password"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
